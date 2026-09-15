@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="260" viewBox="0 0 900 260">
+<rect width="900" height="260" fill="#151515"/>
+<path d="M90 20 L155 42 L175 120 Q168 195 90 235 Q12 195 5 120 L25 42 Z" fill="#222" stroke="#BFC3C8" stroke-width="6"/>
+<path d="M90 45 L138 61 L150 120 Q144 170 90 202 Q36 170 30 120 L42 61 Z" fill="#101010" stroke="#777" stroke-width="3"/>
+<text x="90" y="145" text-anchor="middle" fill="#E6E6E6" font-size="80" font-family="Segoe UI" font-weight="bold">F</text>
+<text x="220" y="120" fill="#F2F2F2" font-size="72" font-family="Segoe UI" font-style="italic">Ferrari's</text>
+<text x="225" y="170" fill="#BDBDBD" font-size="25" font-family="Segoe UI" letter-spacing="8">PUNTO DE VENTA</text>
+</svg>

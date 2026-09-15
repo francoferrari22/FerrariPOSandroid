@@ -1,0 +1,25 @@
+FERRARI POS MANAGER — CAMBIOS DE ESTA VERSION
+
+ANDROID
+- El nombre visible de la aplicación se mantiene como FERRARI POS MANAGER.
+- Se conserva el icono existente.
+- Promociones: cantidad por producto con + / -, permitiendo repetir el mismo producto.
+- Ventas: botón PROMOCIONES para cargar promociones sincronizadas desde Windows al carrito.
+- Ventas: selector de cliente dedicado para imputar créditos al cliente elegido.
+- Productos: se conserva alta/edición desde Android.
+- Caja: muestra el arqueo completo del turno (inicial, ventas, ingresos, egresos, esperado, Mercado Pago y retenciones).
+- Mesas: tocar una mesa con ticket abierto lleva directamente a COBRAR MESA; ya no abre detalle/notas.
+- Compras: carrito de orden, agregar múltiples productos, costo inicial tomado del costo sincronizado de Windows y eliminación de líneas.
+- Compras: mantener pulsada una orden permite solicitar su eliminación; Windows solo elimina órdenes DRAFT.
+- Sonido de escáner diferenciado del sonido normal de botones.
+
+WINDOWS
+- Se conserva el diseño existente.
+- Se refuerza el doble buffer y WS_EX_COMPOSITED.
+- La sincronización móvil deja de reconstruir las pestañas VENTA 1/2/3 cada 2,5 segundos si no cambió nada.
+- También evita repintar la grilla de venta si el carrito activo no cambió. Esto elimina el titileo periódico.
+
+GITHUB
+- Un solo workflow compila Android + Windows.
+- La ejecución final genera un único artefacto FERRARI-POS-MANAGER-ANDROID-WINDOWS-COMPLETO.
+- El BAT de publicación solo solicita el link del repositorio y usa main automáticamente.

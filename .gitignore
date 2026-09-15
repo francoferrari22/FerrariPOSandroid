@@ -1,0 +1,15 @@
+# FerrariPOS - archivos generados que NO deben publicarse
+*.zip
+*.apk
+*.aab
+*.exe
+*.msi
+**/bin/
+**/obj/
+**/.gradle/
+**/build/
+**/.idea/
+**/local.properties
+**/*.user
+**/*.suo
+PUBLICACION_GITHUB_ERROR.txt

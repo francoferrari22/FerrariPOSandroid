@@ -1,0 +1,16 @@
+FerrariPOS - COMPILACION COMPLETA
+
+1) Extraer todo el ZIP.
+2) Ejecutar SUBIR_A_GITHUB.bat.
+3) Presionar ENTER para conservar el repositorio anterior:
+   https://github.com/francoferrari22/FerrariPOSandroid.git
+4) El BAT publica main con el mismo mecanismo anterior (fetch + force-with-lease).
+5) GitHub Actions ejecuta dos compilaciones independientes:
+   - Windows: FerrariPOS.Windows/FerrarisPOS.csproj -> Release win-x64 self-contained.
+   - Android: FerrariPOS.Manager.Android -> assembleDebug con Gradle 8.9/JDK 17.
+6) En Actions quedan dos artefactos:
+   - FerrariPOS-Windows-x64
+   - FerrariPOS-Manager-debug
+
+No se agregan credenciales nuevas ni se crea otro repositorio.
+Si Git ya tiene una credencial de GitHub configurada en Windows, se reutiliza.

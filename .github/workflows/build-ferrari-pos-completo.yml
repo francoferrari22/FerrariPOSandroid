@@ -1,0 +1,147 @@
+name: FERRARI POS MANAGER - Android + Windows
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  android:
+    name: Compilar Android APK
+    runs-on: ubuntu-latest
+    steps:
+      - name: Descargar código
+        uses: actions/checkout@v4
+
+      - name: Instalar Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+
+      - name: Configurar Android SDK
+        shell: bash
+        run: |
+          set -euxo pipefail
+          export PATH="$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$PATH"
+          echo "ANDROID_HOME=$ANDROID_HOME"
+          sdkmanager --version
+          yes | sdkmanager --licenses >/dev/null || true
+          sdkmanager --install "platform-tools" "platforms;android-35" "build-tools;35.0.0"
+
+      - name: Preparar Gradle Wrapper Linux
+        working-directory: FerrariPOS.Manager.Android
+        shell: bash
+        run: |
+          set -euxo pipefail
+          sed -i 's/\r$//' gradlew
+          chmod +x gradlew
+          test -x gradlew
+          echo "Gradle wrapper configurado:"
+          ./gradlew --version | tee gradle-version.txt
+          grep -q "Gradle 8.11.1" gradle-version.txt
+
+      - name: Compilar APK Debug
+        working-directory: FerrariPOS.Manager.Android
+        shell: bash
+        run: |
+          set -euxo pipefail
+          ./gradlew --no-daemon --stacktrace --warning-mode summary clean assembleDebug
+
+      - name: Publicar APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: FerrariPOS-Manager-Android
+          path: FerrariPOS.Manager.Android/app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
+
+  windows:
+    name: Compilar FerrariPOS Windows
+    runs-on: windows-latest
+    steps:
+      - name: Descargar código
+        uses: actions/checkout@v4
+
+      - name: Instalar .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Restaurar dependencias
+        working-directory: FerrariPOS.Windows
+        shell: pwsh
+        run: dotnet restore FerrarisPOS.csproj
+
+      - name: Publicar programa Windows EXE autocontenido
+        working-directory: FerrariPOS.Windows
+        shell: pwsh
+        run: |
+          dotnet publish FerrarisPOS.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:PublishTrimmed=false -o ../artifacts/FerrariPOS-Windows/EXE
+          if (!(Test-Path ../artifacts/FerrariPOS-Windows/EXE/FerrarisPOS.exe)) { throw "No se genero FerrarisPOS.exe" }
+
+      - name: Instalar Inno Setup
+        shell: pwsh
+        run: |
+          choco install innosetup --yes --no-progress
+          $iscc = Get-ChildItem "C:\Program Files (x86)\Inno Setup 6\ISCC.exe","C:\Program Files\Inno Setup 6\ISCC.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
+          if (-not $iscc) { throw "No se encontro ISCC.exe" }
+          "ISCC=$($iscc.FullName)" | Out-File -FilePath $env:GITHUB_ENV -Append
+
+      - name: Crear instalador FerrariPOS Setup EXE
+        working-directory: FerrariPOS.Windows
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path ../artifacts/FerrariPOS-Windows/Installer | Out-Null
+          & $env:ISCC /dBuildDir="$env:GITHUB_WORKSPACE\artifacts\FerrariPOS-Windows\EXE" /dProjectDir="$env:GITHUB_WORKSPACE\FerrariPOS.Windows" /dOutputDir="$env:GITHUB_WORKSPACE\artifacts\FerrariPOS-Windows\Installer" Setup_FerrariPOS_V73_1_56.iss
+          $setup = Get-ChildItem ../artifacts/FerrariPOS-Windows/Installer -Filter *.exe -ErrorAction SilentlyContinue | Select-Object -First 1
+          if (-not $setup) { throw "No se genero el instalador Setup.exe" }
+
+      - name: Publicar artefacto Windows completo
+        uses: actions/upload-artifact@v4
+        with:
+          name: FerrariPOS-Manager-Windows-COMPLETO
+          path: artifacts/FerrariPOS-Windows
+          if-no-files-found: error
+
+  paquete-completo:
+    name: Guardar Android + Windows juntos
+    runs-on: ubuntu-latest
+    needs: [android, windows]
+    steps:
+      - name: Descargar APK Android
+        uses: actions/download-artifact@v4
+        with:
+          name: FerrariPOS-Manager-Android
+          path: entrega/Android
+
+      - name: Descargar programa Windows
+        uses: actions/download-artifact@v4
+        with:
+          name: FerrariPOS-Manager-Windows
+          path: entrega/Windows
+
+      - name: Preparar nombres de entrega
+        shell: bash
+        run: |
+          set -euxo pipefail
+          apk=$(find entrega/Android -type f -name "*.apk" | head -n 1)
+          test -n "$apk"
+          cp "$apk" entrega/Android/FERRARI_POS_MANAGER.apk
+
+      - name: Crear paquete completo
+        shell: bash
+        run: |
+          set -euxo pipefail
+          cd entrega
+          zip -qr ../FERRARI-POS-MANAGER-ANDROID-WINDOWS.zip Android Windows
+
+      - name: Publicar paquete completo
+        uses: actions/upload-artifact@v4
+        with:
+          name: FERRARI-POS-MANAGER-ANDROID-WINDOWS-COMPLETO
+          path: FERRARI-POS-MANAGER-ANDROID-WINDOWS.zip
+          if-no-files-found: error
