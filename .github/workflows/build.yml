@@ -1,0 +1,193 @@
+name: FerrariPOS - Android + Windows + Licencias
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  android-manager:
+    name: Android Manager APK
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Build FerrariPOS Manager Android
+        working-directory: FerrariPOS.Manager.Android
+        run: |
+          chmod +x gradlew
+          ./gradlew --no-daemon --stacktrace clean assembleRelease
+      - name: Verify APK
+        working-directory: FerrariPOS.Manager.Android
+        shell: bash
+        run: |
+          test -f app/build/outputs/apk/release/app-release.apk
+          cp app/build/outputs/apk/release/app-release.apk app/build/outputs/apk/release/FerrariPOS-Manager-Android.apk
+      - name: Upload Manager Android
+        uses: actions/upload-artifact@v4
+        with:
+          name: FerrariPOS-Manager-Android
+          path: FerrariPOS.Manager.Android/app/build/outputs/apk/release/FerrariPOS-Manager-Android.apk
+          if-no-files-found: error
+
+  android-license-admin:
+    name: Android License Admin APK
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Build FerrariPOS License Admin Android
+        working-directory: FerrariPOS.LicenseAdmin.Android
+        run: |
+          chmod +x gradlew
+          ./gradlew --no-daemon --stacktrace clean assembleRelease
+      - name: Verify APK
+        working-directory: FerrariPOS.LicenseAdmin.Android
+        shell: bash
+        run: |
+          test -f app/build/outputs/apk/release/app-release.apk
+          cp app/build/outputs/apk/release/app-release.apk app/build/outputs/apk/release/FerrariPOS-LicenseAdmin-Android.apk
+      - name: Upload License Admin Android
+        uses: actions/upload-artifact@v4
+        with:
+          name: FerrariPOS-LicenseAdmin-Android
+          path: FerrariPOS.LicenseAdmin.Android/app/build/outputs/apk/release/FerrariPOS-LicenseAdmin-Android.apk
+          if-no-files-found: error
+
+  windows-manager:
+    name: Windows Manager EXE + SETUP
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - name: Restore
+        working-directory: FerrariPOS.Windows
+        run: dotnet restore FerrarisPOS.csproj
+      - name: Publish Windows Manager
+        working-directory: FerrariPOS.Windows
+        run: |
+          dotnet publish FerrarisPOS.csproj -c Release -r win-x64 --self-contained true -o publish -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:PublishTrimmed=false
+      - name: Install Inno Setup
+        shell: powershell
+        run: choco install innosetup -y --no-progress
+      - name: Build Windows Setup
+        working-directory: FerrariPOS.Windows
+        shell: powershell
+        run: |
+          New-Item -ItemType Directory -Force -Path installer | Out-Null
+          $iscc = $null
+          $candidates = @(
+            "$env:ProgramFiles(x86)\Inno Setup 6\ISCC.exe",
+            "$env:ProgramFiles\Inno Setup 6\ISCC.exe",
+            "$env:ProgramFiles\Inno Setup 7\ISCC.exe",
+            "$env:ProgramFiles(x86)\Inno Setup 7\ISCC.exe"
+          )
+          foreach ($candidate in $candidates) {
+            if (Test-Path $candidate) { $iscc = $candidate; break }
+          }
+          if (-not $iscc) { $iscc = (Get-Command ISCC.exe -ErrorAction SilentlyContinue).Source }
+          if (-not $iscc) { throw 'No se encontró ISCC.exe.' }
+          & $iscc /dBuildDir="publish" /dProjectDir="." /dOutputDir="installer" "Setup_FerrariPOS_V73_1_57.iss"
+          if ($LASTEXITCODE -ne 0) { throw "Inno Setup terminó con código $LASTEXITCODE" }
+      - name: Verify and package Windows Manager
+        shell: powershell
+        run: |
+          $exe = 'FerrariPOS.Windows/publish/FerrarisPOS.exe'
+          $setup = 'FerrariPOS.Windows/installer/FerrariPOS_Setup_V73.1.57.exe'
+          if (-not (Test-Path $exe)) { throw 'No se generó FerrarisPOS.exe.' }
+          if (-not (Test-Path $setup)) { throw 'No se generó el Setup de FerrariPOS.' }
+          New-Item -ItemType Directory -Force -Path FerrariPOS.Windows/download | Out-Null
+          Copy-Item $exe 'FerrariPOS.Windows/download/manager.exe' -Force
+          Copy-Item $setup 'FerrariPOS.Windows/download/manager setup.exe' -Force
+          Compress-Archive -Path 'FerrariPOS.Windows/download/manager.exe','FerrariPOS.Windows/download/manager setup.exe' -DestinationPath 'FerrariPOS.Windows/FerrariPOS-Manager-Windows-COMPLETO.zip' -Force
+          if (-not (Test-Path 'FerrariPOS.Windows/FerrariPOS-Manager-Windows-COMPLETO.zip')) { throw 'No se pudo crear el ZIP de Windows.' }
+      - name: Upload Windows Manager EXE + SETUP juntos
+        uses: actions/upload-artifact@v4
+        with:
+          name: FerrariPOS-Manager-Windows-COMPLETO
+          path: FerrariPOS.Windows/FerrariPOS-Manager-Windows-COMPLETO.zip
+          if-no-files-found: error
+
+  windows-license-admin:
+    name: Windows License Admin EXE + SETUP
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - name: Restore License Admin
+        working-directory: FerrariPOS.LicenseManager.Windows
+        run: dotnet restore FerrariPOS_LicenseManager_Corregido.csproj
+      - name: Verify private key exists
+        working-directory: FerrariPOS.LicenseManager.Windows
+        shell: powershell
+        run: |
+          if (-not (Test-Path 'private_key.pem')) { throw 'Falta private_key.pem para firmar licencias.' }
+      - name: Publish License Admin
+        working-directory: FerrariPOS.LicenseManager.Windows
+        run: |
+          dotnet publish FerrariPOS_LicenseManager_Corregido.csproj -c Release -r win-x64 --self-contained true -o publish -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:PublishTrimmed=false
+      - name: Install Inno Setup
+        shell: powershell
+        run: choco install innosetup -y --no-progress
+      - name: Verify License Admin installer assets
+        working-directory: FerrariPOS.LicenseManager.Windows
+        shell: powershell
+        run: |
+          if (-not (Test-Path 'FerrariPOS_icono.ico')) { throw 'Falta FerrariPOS_icono.ico para el instalador de licencias.' }
+          if (-not (Test-Path 'private_key.pem')) { throw 'Falta private_key.pem para firmar licencias.' }
+
+      - name: Build License Admin Setup
+        working-directory: FerrariPOS.LicenseManager.Windows
+        shell: powershell
+        run: |
+          New-Item -ItemType Directory -Force -Path installer | Out-Null
+          $iscc = $null
+          $candidates = @(
+            "$env:ProgramFiles(x86)\Inno Setup 6\ISCC.exe",
+            "$env:ProgramFiles\Inno Setup 6\ISCC.exe",
+            "$env:ProgramFiles\Inno Setup 7\ISCC.exe",
+            "$env:ProgramFiles(x86)\Inno Setup 7\ISCC.exe"
+          )
+          foreach ($candidate in $candidates) {
+            if (Test-Path $candidate) { $iscc = $candidate; break }
+          }
+          if (-not $iscc) { $iscc = (Get-Command ISCC.exe -ErrorAction SilentlyContinue).Source }
+          if (-not $iscc) { throw 'No se encontró ISCC.exe.' }
+          & $iscc /dBuildDir="publish" "FerrariPOS_LicenseManager_Setup.iss"
+          if ($LASTEXITCODE -ne 0) { throw "Inno Setup terminó con código $LASTEXITCODE" }
+      - name: Verify and package License Admin
+        shell: powershell
+        run: |
+          $exe = 'FerrariPOS.LicenseManager.Windows/publish/FerrariPOS_LicenseManager_Corregido.exe'
+          $setup = 'FerrariPOS.LicenseManager.Windows/installer/FerrariPOS_LicenseManager_PRO_3_2_Setup.exe'
+          if (-not (Test-Path $exe)) { throw 'No se generó el License Manager EXE.' }
+          if (-not (Test-Path $setup)) { throw 'No se generó el License Manager Setup.' }
+          New-Item -ItemType Directory -Force -Path FerrariPOS.LicenseManager.Windows/download | Out-Null
+          Copy-Item $exe 'FerrariPOS.LicenseManager.Windows/download/LicenseAdmin.exe' -Force
+          Copy-Item $setup 'FerrariPOS.LicenseManager.Windows/download/LicenseAdmin-Setup.exe' -Force
+          Compress-Archive -Path 'FerrariPOS.LicenseManager.Windows/download/LicenseAdmin.exe','FerrariPOS.LicenseManager.Windows/download/LicenseAdmin-Setup.exe' -DestinationPath 'FerrariPOS.LicenseManager.Windows/FerrariPOS-LicenseAdmin-Windows-COMPLETO.zip' -Force
+          if (-not (Test-Path 'FerrariPOS.LicenseManager.Windows/FerrariPOS-LicenseAdmin-Windows-COMPLETO.zip')) { throw 'No se pudo crear el ZIP de License Admin.' }
+      - name: Upload License Admin EXE + SETUP juntos
+        uses: actions/upload-artifact@v4
+        with:
+          name: FerrariPOS-LicenseAdmin-Windows-COMPLETO
+          path: FerrariPOS.LicenseManager.Windows/FerrariPOS-LicenseAdmin-Windows-COMPLETO.zip
+          if-no-files-found: error

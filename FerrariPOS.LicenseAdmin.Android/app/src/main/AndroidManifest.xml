@@ -1,0 +1,27 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Permite consultar destinos de compartir texto en Android moderno. -->
+    <queries>
+        <package android:name="com.whatsapp" />
+        <package android:name="com.whatsapp.w4b" />
+        <package android:name="org.telegram.messenger" />
+        <package android:name="com.google.android.gm" />
+        <intent>
+            <action android:name="android.intent.action.SEND" />
+            <data android:mimeType="text/plain" />
+        </intent>
+    </queries>
+    <application
+        android:icon="@drawable/ferrari_app_icon"
+        android:roundIcon="@drawable/ferrari_app_icon"
+        android:theme="@style/Theme.FerrariLicenseAdmin"
+        android:label="FerrariPOS · Licencias"
+        android:allowBackup="false"
+        android:supportsRtl="true">
+        <activity android:name=".MainActivity" android:screenOrientation="portrait" android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN"/>
+                <category android:name="android.intent.category.LAUNCHER"/>
+            </intent-filter>
+        </activity>
+    </application>
+</manifest>
